@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./app-manage.py --state-dir tasks --marathon-api http://localhost:8080/ $@

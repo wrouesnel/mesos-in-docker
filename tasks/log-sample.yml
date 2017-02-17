@@ -1,0 +1,47 @@
+acceptedResourceRoles:
+backoffFactor: 1.15
+backoffSeconds: 1
+labels: []
+cpus: 0.1
+requirePorts: false
+instances: 1
+healthChecks: []
+disk: 0
+id: /example-task
+maxLaunchDelaySeconds: 3600
+taskKillGracePeriodSeconds:
+container:
+  docker:
+    network: BRIDGE
+    parameters: []
+    image: busybox
+    forcePullImage: false
+    portMappings:
+    privileged: false
+  type: DOCKER
+  volumes: []
+env: {}
+uris: []
+mem: 128
+args:
+readinessChecks: []
+dependencies: []
+user:
+storeUrls: []
+gpus: 0
+portDefinitions:
+- labels: {}
+  protocol: tcp
+  port: 10000
+upgradeStrategy:
+  maximumOverCapacity: 1
+  minimumHealthCapacity: 1
+secrets: {}
+cmd: sleep 60
+ports:
+- 10000
+residency:
+executor: ''
+ipAddress:
+fetch: []
+constraints: []

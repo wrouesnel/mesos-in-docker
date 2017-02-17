@@ -1,0 +1,63 @@
+version: '2'
+
+networks:
+  mesosnet:
+    driver: bridge
+    
+services:
+  zookeeper:
+    image: bobrik/zookeeper
+    volumes:
+    - ./tmp/zk/lib:/var/lib/zookeeper
+    - ./tmp/zk/log:/var/log/zookeeper
+    environment:
+      ZK_CONFIG: tickTime=2000,initLimit=10,syncLimit=5,maxClientCnxns=128,forceSync=no,clientPort=2181
+      ZK_ID: 1
+    networks:
+      mesosnet:
+
+  mesos_master:
+    build: 
+      context: docker
+      args:
+        http_proxy: ${http_proxy}
+    command: mesos-master --work_dir=/var/lib/mesos 
+                --zk=zk://zookeeper:2181/mesos --quorum=1
+                --no-hostname_lookup
+    volumes:
+    - ./tmp/work_dir:/var/lib/mesos
+    ports:
+    - 5050:5050
+    networks:
+      mesosnet:
+  
+  mesos_slave:
+    build: 
+      context: docker
+      args:
+        http_proxy: ${http_proxy}
+    privileged: true
+    command: mesos-agent
+                --work_dir=/var/lib/mesos
+                --containerizers=docker
+                --master=zk://zookeeper:2181/mesos
+                --no-systemd_enable_support
+                --no-hostname_lookup
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /usr/bin/docker:/usr/bin/docker:ro
+    - /sys/fs/cgroup:/sys/fs/cgroup
+    - ./tmp/work_dir:/var/lib/mesos
+    ports:
+    - 5051:5051
+    networks:
+      mesosnet:
+
+  marathon:
+    image: mesosphere/marathon
+    command: --master zk://zookeeper:2181/mesos 
+             --zk zk://zookeeper:2181/marathon
+    ports:
+    - 8080:8080
+    networks:
+      mesosnet:
