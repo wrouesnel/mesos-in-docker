@@ -3,35 +3,140 @@ version: '2'
 networks:
   mesosnet:
     driver: bridge
-    
+
+volumes:
+  certs:
+
 services:
-  zookeeper:
-    image: bobrik/zookeeper
-    volumes:
-    - ./tmp/zk/lib:/var/lib/zookeeper
-    - ./tmp/zk/log:/var/log/zookeeper
+  proxy:
+    image: wrouesnel/docker-squid4
     environment:
-      ZK_CONFIG: tickTime=2000,initLimit=10,syncLimit=5,maxClientCnxns=128,forceSync=no,clientPort=2181
-      ZK_ID: 1
+      DISABLE_CACHE: "yes"
+    ports:
+    - 127.0.0.1:3128:3128
     networks:
       mesosnet:
 
-  mesos_master:
+  makecerts:
+    build:
+      context: certtool
+    command: --CN=mesos-in-docker
+             --emails=w.rouesnel@gmail.com
+             mesos-master-1
+             mesos-master-2
+             mesos-master-3
+             mesos-agent-1
+             marathon
+             client
+    volumes:
+    - certs:/certs
+
+  etcd0:
+    image: quay.io/coreos/etcd
+    command: |
+             etcd --name etcd0
+             --advertise-client-urls http://etcd0:2379
+             --listen-client-urls http://0.0.0.0:2379
+             --initial-advertise-peer-urls http://etcd0:2380
+             --listen-peer-urls http://0.0.0.0:2380
+             --initial-cluster-token mesos-in-docker
+             --initial-cluster etcd0=http://etcd0:2380
+             --initial-cluster-state new
+             --debug
+    networks:
+      mesosnet:
+
+  zetcd0:
+    build: 
+      context: zetcd
+    command: -endpoint=http://etcd0:2379 -zkaddr=:2181 -logtostderr
+    networks:
+      mesosnet:
+    depends_on:
+    - etcd0
+
+  mesos-master-1:
     build: 
       context: docker
       args:
         http_proxy: ${http_proxy}
     command: mesos-master --work_dir=/var/lib/mesos 
-                --zk=zk://zookeeper:2181/mesos --quorum=1
-                --no-hostname_lookup
+                --zk=zk://zetcd0:2181/mesos --quorum=2
+                --no-hostname_lookup --hostname=mesos-master-1
+    restart: always
+    environment:
+      LIBPROCESS_SSL_ENABLED: "true"
+      LIBPROCESS_SSL_SUPPORT_DOWNGRADE: "false"
+      LIBPROCESS_SSL_KEY_FILE: /certs/mesos-master-1.pem
+      LIBPROCESS_SSL_CERT_FILE: /certs/mesos-master-1.crt
+      LIBPROCESS_SSL_VERIFY_CERT: "true"
+      LIBPROCESS_SSL_REQUIRE_CERT: "true"
+      LIBPROCESS_SSL_VERIFY_IPADD: "false"
+      LIBPROCESS_SSL_CA_FILE: /certs/mesos-in-docker.crt
+      LIBPROCESS_SSL_ENABLE_SSL_V3: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_0: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_1: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_2: "true"
     volumes:
-    - ./tmp/work_dir:/var/lib/mesos
-    ports:
-    - 5050:5050
+    - certs:/certs
+    networks:
+      mesosnet:
+      
+  mesos-master-2:
+    build: 
+      context: docker
+      args:
+        http_proxy: ${http_proxy}
+    command: mesos-master --work_dir=/var/lib/mesos 
+                --zk=zk://zetcd0:2181/mesos --quorum=2
+                --no-hostname_lookup --hostname=mesos-master-2
+    restart: always
+    environment:
+      LIBPROCESS_SSL_ENABLED: "true"
+      LIBPROCESS_SSL_SUPPORT_DOWNGRADE: "false"
+      LIBPROCESS_SSL_KEY_FILE: /certs/mesos-master-2.pem
+      LIBPROCESS_SSL_CERT_FILE: /certs/mesos-master-2.crt
+      LIBPROCESS_SSL_VERIFY_CERT: "true"
+      LIBPROCESS_SSL_REQUIRE_CERT: "true"
+      LIBPROCESS_SSL_VERIFY_IPADD: "false"
+      LIBPROCESS_SSL_CA_FILE: /certs/mesos-in-docker.crt
+      LIBPROCESS_SSL_ENABLE_SSL_V3: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_0: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_1: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_2: "true"
+    volumes:
+    - certs:/certs
+    networks:
+      mesosnet:
+      
+  mesos-master-3:
+    build: 
+      context: docker
+      args:
+        http_proxy: ${http_proxy}
+    command: mesos-master --work_dir=/var/lib/mesos 
+                --zk=zk://zetcd0:2181/mesos --quorum=2
+                --no-hostname_lookup --hostname=mesos-master-3
+    restart: always
+    environment:
+      LIBPROCESS_SSL_ENABLED: "true"
+      LIBPROCESS_SSL_SUPPORT_DOWNGRADE: "false"
+      LIBPROCESS_SSL_KEY_FILE: /certs/mesos-master-3.pem
+      LIBPROCESS_SSL_CERT_FILE: /certs/mesos-master-3.crt
+      LIBPROCESS_SSL_VERIFY_CERT: "true"
+      LIBPROCESS_SSL_REQUIRE_CERT: "true"
+      LIBPROCESS_SSL_VERIFY_IPADD: "false"
+      LIBPROCESS_SSL_CA_FILE: /certs/mesos-in-docker.crt
+      LIBPROCESS_SSL_ENABLE_SSL_V3: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_0: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_1: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_2: "true"
+    volumes:
+    - certs:/certs
     networks:
       mesosnet:
   
-  mesos_slave:
+  mesos-agent-1:
     build: 
       context: docker
       args:
@@ -40,23 +145,51 @@ services:
     command: mesos-agent
                 --work_dir=/var/lib/mesos
                 --containerizers=docker
-                --master=zk://zookeeper:2181/mesos
+                --master=zk://zetcd0:2181/mesos
                 --no-systemd_enable_support
                 --no-hostname_lookup
+                --hostname=mesos-agent-1
+    restart: always
+    environment:
+      LIBPROCESS_SSL_ENABLED: "true"
+      LIBPROCESS_SSL_SUPPORT_DOWNGRADE: "false"
+      LIBPROCESS_SSL_KEY_FILE: /certs/mesos-agent-1.pem
+      LIBPROCESS_SSL_CERT_FILE: /certs/mesos-agent-1.crt
+      LIBPROCESS_SSL_VERIFY_CERT: "true"
+      LIBPROCESS_SSL_REQUIRE_CERT: "true"
+      LIBPROCESS_SSL_VERIFY_IPADD: "false"
+      LIBPROCESS_SSL_CA_FILE: /certs/mesos-in-docker.crt
+      LIBPROCESS_SSL_ENABLE_SSL_V3: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_0: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_1: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_2: "true"
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     - /usr/bin/docker:/usr/bin/docker:ro
     - /sys/fs/cgroup:/sys/fs/cgroup
-    - ./tmp/work_dir:/var/lib/mesos
-    ports:
-    - 5051:5051
+    - certs:/certs
     networks:
       mesosnet:
 
   marathon:
     image: mesosphere/marathon
-    command: --master zk://zookeeper:2181/mesos 
-             --zk zk://zookeeper:2181/marathon
+    command: --master zk://zetcd0:2181/mesos 
+             --zk zk://zetcd0:2181/marathon
+             --hostname marathon
+    restart: always
+    environment:
+      LIBPROCESS_SSL_ENABLED: "true"
+      LIBPROCESS_SSL_SUPPORT_DOWNGRADE: "false"
+      LIBPROCESS_SSL_KEY_FILE: /certs/marathon.pem
+      LIBPROCESS_SSL_CERT_FILE: /certs/marathon.crt
+      LIBPROCESS_SSL_VERIFY_CERT: "true"
+      LIBPROCESS_SSL_REQUIRE_CERT: "true"
+      LIBPROCESS_SSL_VERIFY_IPADD: "false"
+      LIBPROCESS_SSL_CA_FILE: /certs/mesos-in-docker.crt
+      LIBPROCESS_SSL_ENABLE_SSL_V3: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_0: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_1: "false"
+      LIBPROCESS_SSL_ENABLE_TLS_V1_2: "true"
     ports:
     - 8080:8080
     networks:

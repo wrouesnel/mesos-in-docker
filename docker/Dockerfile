@@ -4,17 +4,17 @@ FROM ubuntu:yakkety
 
 RUN apt-get update && apt-get install -y build-essential git libcurl4-nss-dev \
     libsasl2-dev autoconf libtool zlib1g-dev libapr1-dev libsvn-dev cmake jq \
-    default-jdk python-dev
+    default-jdk python-dev libevent-dev  libssl-dev
 
 RUN git clone https://git-wip-us.apache.org/repos/asf/mesos.git mesos-src
     
 RUN cd mesos-src && \
     ./bootstrap && \
-    ./configure CFLAGS=-g CXXFLAGS=-g --disable-java --disable-python && \
+    ./configure CFLAGS=-g CXXFLAGS=-g --disable-java --disable-python --enable-ssl --enable-libevent && \
     ./config.status && \
     make -j3 && \
     make install
 
 RUN mkdir -p /etc/mesos-agent /var/lib/mesos
 
-
+RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/local.conf && ldconfig
