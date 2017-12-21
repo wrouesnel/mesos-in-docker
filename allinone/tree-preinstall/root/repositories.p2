@@ -1,0 +1,14 @@
+[repositories]
+  local
+{% if MAVEN_REPO|default:"" != "" %}
+  maven: {{MAVEN_REPO}}
+{% endif %}
+{% if IVY_REPO|default:"" != "" %}
+  ivy: {{IVY_REPO}}
+  ivy-other: {{IVY_REPO}},  [organization]/[module]/[revision]/[type]/[artifact](-[classifier]).[ext]
+  plugin-ivy: {{IVY_REPO}},  [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
+  sbt-plugin-ivy: {{IVY_REPO}},  [orgPath]/[module]_[scalaVersion]_[sbtVersion]/[revision]/[artifact](-[classifier])-[revision].[ext]
+{% endif %}
+[boot]
+  directory: ${sbt.boot.directory-${sbt.global.base-${user.home}/.sbt}/boot/}
+

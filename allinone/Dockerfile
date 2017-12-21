@@ -13,6 +13,8 @@ ARG https_proxy=
 
 ARG URL_P2CLI=https://github.com/wrouesnel/p2cli/releases/download/r5/p2
 
+COPY tree-preinstall/ /
+
 COPY *.asc /tmp
 
 RUN apt-key add /tmp/*.asc && rm -f /tmp/*.asc
@@ -27,7 +29,7 @@ RUN apt-get update && apt-get install -y \
         pwgen \
         curl \
         dnsutils \
-        apache2-utils && \
+        apache2-utils rsync net-tools iproute2 && \
     # Templating engine
     wget -O /usr/local/bin/p2 $URL_P2CLI && \
     chmod +x /usr/local/bin/p2
@@ -47,6 +49,13 @@ RUN apt-get update && apt-get install -y zookeeper zookeeper-bin runit
 RUN git clone --depth=1 https://git-wip-us.apache.org/repos/asf/mesos.git mesos-src && \
     git clone --depth=1 https://github.com/mesosphere/marathon.git marathon-src
 
+ARG MAVEN_REPO=
+ARG IVY_REPO=
+
+RUN mkdir /root/.sbt /root/.m2 && \
+    p2 -t /root/repositories.p2 -o /root/.sbt/repositories && \
+    p2 -t /root/settings.xml -o /root/.m2/settings.xml
+
 RUN apt-get update && apt-get install -y maven
 
 # Build Mesos
@@ -63,13 +72,11 @@ RUN cd marathon-src && \
     mkdir -p /opt/marathon && \
     tar -xvzf target/universal/marathon*.tgz -C /opt/marathon --strip-components=1
 
+COPY tree-postinstall/ /
+
 RUN mkdir -p /etc/mesos-agent /var/lib/mesos
 
 ENV SVDIR=/run/services
-
-RUN apt-get update && apt-get install -y rsync net-tools iproute2
-
-COPY tree-postinstall/ /
 
 RUN rsync -av /etc/zookeeper/conf.replacements/ /etc/zookeeper/conf/ && \
     rm -rf /etc/zookeeper/conf.replacements/
