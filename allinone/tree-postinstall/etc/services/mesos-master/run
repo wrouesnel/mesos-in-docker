@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ ! -e /run/log/mesos-master ] && mkfifo /run/log/mesos-master
+
+exec mesos-master --no-hostname_lookup \
+    --zk=zk://localhost:2181/mesos \
+    --quorum=1 \
+    --work_dir=/var/lib/mesos >/run/log/mesos-master 2>&1

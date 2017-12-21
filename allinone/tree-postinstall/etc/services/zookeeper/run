@@ -1,0 +1,7 @@
+#!/bin/sh
+
+[ ! -e /run/log/zookeeper ] && mkfifo /run/log/zookeeper
+
+# For some reason this is needed to let the zookeeper script work.
+export JAVA=$(which java)
+exec /usr/share/zookeeper/bin/zkServer.sh start-foreground /etc/zookeeper/conf/zoo.cfg >/run/log/zookeeper 2>&1

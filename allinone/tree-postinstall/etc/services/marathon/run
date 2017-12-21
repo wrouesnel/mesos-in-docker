@@ -1,0 +1,7 @@
+#!/bin/sh
+
+[ ! -e /run/log/marathon ] && mkfifo /run/log/marathon
+
+export MESOS_NATIVE_JAVA_LIBRARY=/usr/local/lib/libmesos.so
+
+exec /opt/marathon/bin/marathon --master localhost:5050 --zk zk://localhost:2181/marathon >/run/log/marathon 2>&1
