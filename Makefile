@@ -1,5 +1,7 @@
 ALLINONE_SRC := $(shell find allinone -print )
 
+BUILD_CONCURRENCY ?= 1
+
 .allinone.iid: $(ALLINONE_SRC)
 	docker build --iidfile $@ \
 		--build-arg=DOCKER_PREFIX=$(DOCKER_PREFIX) \
@@ -7,11 +9,12 @@ ALLINONE_SRC := $(shell find allinone -print )
 		--build-arg=https_proxy=$(https_proxy) \
 		--build-arg=MAVEN_REPO=$(MAVEN_REPO) \
 		--build-arg=IVY_REPO=$(IVY_REPO) \
+		--build-arg=BUILD_CONCURRENCY=$(BUILD_CONCURRENCY) \
 		allinone
 
 run-allinone: .allinone.iid
-	docker -it --privileged \
+	docker run -it --privileged \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /usr/bin/docker:/usr/bin/docker:ro \
 		-v /sys/fs/cgroup:/sys/fs/cgroup \
-	 run $(shell cat $<)
+		$(shell cat $<)

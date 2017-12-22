@@ -51,10 +51,13 @@ RUN git clone --depth=1 https://git-wip-us.apache.org/repos/asf/mesos.git mesos-
 
 ARG MAVEN_REPO=
 ARG IVY_REPO=
+ARG BUILD_CONCURRENCY=1
+
+ENV JVM_OPTS="-Dsbt.override.build.repos=true"
 
 RUN mkdir /root/.sbt /root/.m2 && \
     p2 -t /root/repositories.p2 -o /root/.sbt/repositories && \
-    p2 -t /root/settings.xml -o /root/.m2/settings.xml
+    p2 -t /root/settings.xml.p2 -o /root/.m2/settings.xml
 
 RUN apt-get update && apt-get install -y maven
 
@@ -63,7 +66,7 @@ RUN cd mesos-src && \
     ./bootstrap && \
     ./configure CFLAGS=-g CXXFLAGS=-g --disable-python && \
     ./config.status && \
-    make && \
+    make -j$BUILD_CONCURRENCY && \
     make install
     
 # Build Marathon
