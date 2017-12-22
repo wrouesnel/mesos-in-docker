@@ -1,9 +1,11 @@
 ALLINONE_SRC := $(shell find allinone -print )
 
 BUILD_CONCURRENCY ?= 1
+BUILD_OPTS ?=
 
 .allinone.iid: $(ALLINONE_SRC)
 	docker build --iidfile $@ \
+		$(BUILD_OPTS) \
 		--build-arg=DOCKER_PREFIX=$(DOCKER_PREFIX) \
 		--build-arg=http_proxy=$(http_proxy) \
 		--build-arg=https_proxy=$(https_proxy) \
